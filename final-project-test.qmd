@@ -462,31 +462,34 @@ teams <-
 
 ui <- fluidPage(
   theme = bslib::bs_theme(bootswatch = "sandstone"),
-  setBackgroundColor(color = "ivory",
-                     gradient = c("linear", "radial")),
-    sidebarLayout(
-      sidebarPanel(
-        selectInput("team_choices",
-                    "Choose a NBA Team",
-                    choices = teams),
-        sliderInput(
-          "season",
-          "Choose a Season (2024 -> 23-24)",
-          min = 2000,
-          max = 2024,
-          value = 2024,
-          sep = ""
-        ),
-        selectInput("player",
-                    "Choose a Player",
-                    choices = NULL),
-        actionButton("button",
-                     "Update")
+  setBackgroundColor(
+    color = "ivory",
+    gradient = c("linear", "radial")
+  ),
+  sidebarLayout(
+    sidebarPanel(
+      sliderInput(
+        "season",
+        "Choose a Season (2024 -> 23-24)",
+        min = 2000,
+        max = 2024,
+        value = 2024,
+        sep = ""
       ),
-      mainPanel(plotOutput("player_plot"),
-                DT::dataTableOutput("shot_metrics")
-        )
-      )
+      selectInput("team_choices",
+                  "Choose a NBA Team",
+                  choices = teams),
+      selectInput("player",
+                  "Choose a Player",
+                  choices = NULL),
+      actionButton("button",
+                   "Update")
+    ),
+    mainPanel(
+      plotOutput("player_plot"),
+      DT::dataTableOutput("shot_metrics")
+    )
+  )
 )
 
 server <- function(input, output, session) {
