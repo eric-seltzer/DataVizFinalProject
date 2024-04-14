@@ -215,6 +215,13 @@ final_player <- player %>% filter(dateGame == 20210615)
 ```
 
 ```{r}
+player |>
+  group_by(nameZone) |>
+  summarise(prop = mean(isShotMade))
+```
+
+
+```{r}
 palette <- paletteer::paletteer_d("RColorBrewer::YlOrRd", direction = -1)
 
 p1 <- plot_court(court_themes$ppt) + 
@@ -486,10 +493,11 @@ ui <- fluidPage(
                    "Update")
     ),
     mainPanel(
-      plotOutput("player_plot"),
-      DT::dataTableOutput("shot_metrics")
+      plotOutput("player_plot")
     )
-  )
+  ),
+  DT::dataTableOutput("shot_metrics"),
+  DT::dataTableOutput("shot_type"),
 )
 
 server <- function(input, output, session) {
@@ -625,6 +633,17 @@ server <- function(input, output, session) {
   #       geom_line()
   #   })
   
+  clutch <-
+    eventReactive(input$button, {
+      player_react() |>
+        group_by(typeAction) |>
+        summarise(`Percent of Shots Made` = round(mean(isShotMade), 2),
+                  nS = n()) |>
+        filter(nS >= 10) |>
+        select(-nS) |>
+        arrange(desc(`Percent of Shots Made`))
+    })
+  
   metrics <-
     eventReactive(input$button, {
       metrics <- bref_players_stats(seasons = input$season,
@@ -693,6 +712,18 @@ server <- function(input, output, session) {
         searching = FALSE,
         paging = FALSE),
       rownames = FALSE
+    )
+  
+  output$shot_type <-
+    DT::renderDataTable(
+      clutch(),
+      options = list(
+        scrollX = TRUE,
+        searching = FALSE,
+        paging = FALSE
+      ),
+      rownames = FALSE,
+      caption = "Minimum 10 Shots Attempted"
     )
 }
 
