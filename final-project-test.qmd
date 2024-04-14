@@ -237,6 +237,35 @@ p1
 ```
 
 ```{r}
+stats <-
+  bref_players_stats(seasons = 2024,
+                     tables = "per_game")
+stats <-
+  stats |>
+  select(- c("slugSeason",
+            "groupPosition",
+            "yearSeason",
+            "isSeasonCurrent",
+            "slugPlayerSeason",
+            "slugPlayerBREF",
+            "isHOFPlayer",
+            "slugTeamsBREF",
+            "pctFG2",
+            "fg2mPerGame",
+            "fg2aPerGame",
+            "idPlayerNBA",
+            "urlPlayerThumbnail",
+            "urlPlayerHeadshot",
+            "urlPlayerPhoto",
+            "urlPlayerStats",
+            "urlPlayerActionPhoto",
+            "countTeamsPlayerSeasonPerGame",
+            "urlPlayerBREF"
+          ))
+```
+
+
+```{r}
 library(shiny)
 library(nbastatR)
 library(tidyverse)
@@ -245,8 +274,13 @@ library(extrafont)
 library(cowplot)
 library(shinyWidgets)
 library(broom)
+library(modelr)
+library(pander)
+library(DT)
 
 # Creating court and plotting
+
+Sys.setenv(VROOM_CONNECTION_SIZE=500000)
 
 circle_points = function(center = c(0, 0),
                          radius = 1,
@@ -449,16 +483,11 @@ ui <- fluidPage(
         actionButton("button",
                      "Update")
       ),
-      mainPanel(
-        tabsetPanel(
-          tabPanel("Shot Chart",
-                   plotOutput("player_plot")),
-          tabPanel("Shot Make Probability",
-                   plotOutput("log_model"))
+      mainPanel(plotOutput("player_plot"),
+                DT::dataTableOutput("shot_metrics")
         )
       )
-    )
-  )
+)
 
 server <- function(input, output, session) {
   team_react <-
@@ -545,7 +574,7 @@ server <- function(input, output, session) {
             face = "bold",
             vjust = -8
           ),
-          legend.position = c(.5, .85),
+          legend.position = c(.5, .98),
           legend.direction = "horizontal",
           legend.title = element_blank(),
           legend.text = element_text(
@@ -553,7 +582,7 @@ server <- function(input, output, session) {
             size = 10,
             family = "Times New Roman",
             face = "bold",
-            colour = "white"
+            colour = "black"
           ),
           plot.caption = element_text(
             hjust = .5,
@@ -569,22 +598,99 @@ server <- function(input, output, session) {
       ggdraw(p1) + theme(plot.background = element_rect(fill = "ivory", color = NA))
     })
   
-  model <-
-    reactive({
-      df <- glm(isShotMade ~ distanceShot + numberPeriod, data = player_react(), family = "binomial")
+  # model <-
+  #   reactive({
+  #     df <- glm(isShotMade ~ distanceShot + numberPeriod, data = player_react(), family = "binomial")
+  #     grid <- 
+  #       df |>
+  #       data_grid(
+  #       distanceShot = seq_range(distanceShot, n = 100)
+  #     )
+  #     aug <-
+  #       augment(df,
+  #               newdata = grid,
+  #               se_fit=TRUE)
+  #     aug <-
+  #       mutate(.predprob = (exp(.fitted) / (1 + exp(.fitted))))
+  #   })
+  # 
+  # output$log_model <-
+  #   renderPlot({
+  #     ggplot(model(),
+  #            aes(x = distanceShot,
+  #                y = .predprob)) +
+  #       geom_line()
+  #   })
+  
+  metrics <-
+    eventReactive(input$button, {
+      metrics <- bref_players_stats(seasons = input$season,
+                                    tables = "per_game") |>
+        filter(namePlayer == input$player) |>
+        select(
+          -c(
+            "slugSeason",
+            "groupPosition",
+            "yearSeason",
+            "isSeasonCurrent",
+            "slugPlayerSeason",
+            "slugPlayerBREF",
+            "isHOFPlayer",
+            "slugTeamsBREF",
+            "pctFG2",
+            "fg2mPerGame",
+            "fg2aPerGame",
+            "idPlayerNBA",
+            "urlPlayerThumbnail",
+            "urlPlayerHeadshot",
+            "urlPlayerPhoto",
+            "urlPlayerStats",
+            "urlPlayerActionPhoto",
+            "countTeamsPlayerSeasonPerGame",
+            "urlPlayerBREF"
+          )
+        ) |>
+        rename("Name" = namePlayer,
+               "Position" = slugPosition,
+               "Age" = agePlayer,
+               "Team" = slugTeamBREF,
+               "G" = countGames,
+               "GS" = countGamesStarted,
+               "FG%"= pctFG,
+               "3P%" = pctFG3,
+               "eFG%" = pctEFG,
+               "FT%" = pctFT,
+               "MP" = minutesPerGame,
+               "FGM" = fgmPerGame,
+               "FGA" = fgaPerGame,
+               "3P" = fg3mPerGame,
+               "3PA" = fg3aPerGame,
+               "FT" = ftmPerGame,
+               "FTA" = ftaPerGame,
+               "ORB" = orbPerGame,
+               "DRB" = drbPerGame,
+               "TRB" = trbPerGame,
+               "AST" = astPerGame,
+               "STL" = stlPerGame,
+               "BLK" = blkPerGame,
+               "TOV" = tovPerGame,
+               "PF" = pfPerGame,
+               "PTS" = ptsPerGame) |>
+        select(-c("ORB", "DRB")) |>
+        mutate(Age = as.integer(Age),
+               G = as.integer(G),
+               GS = as.integer(GS))
     })
   
-  aug <-
-    augment(model()) |>
-    mutate(.predprob = (exp(.fitted) / (1 + exp(.fitted))))
-  
-  output$log_model <-
-    renderPlot({
-      ggplot(aug,
-             aes(x = distanceShot,
-                 y = .predprob)) +
-        geom_line()
-    })
+  output$shot_metrics <-
+    DT::renderDataTable(
+      metrics(),
+      options = list(
+        scrollX = TRUE,
+        searching = FALSE,
+        paging = FALSE),
+      rownames = FALSE
+    )
 }
 
 shinyApp(ui, server)
