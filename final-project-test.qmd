@@ -198,12 +198,12 @@ nba_teams <-
 
 # Grab team shot data
 team <-
-  teams_shots(teams = "Brooklyn Nets",
+  teams_shots(teams = "Golden State Warriors",
               seasons = 2021,
-              season_types = "Playoffs")
+              season_types = "Regular Season")
 
 # Filter shot data for player & clean data to fit court dimensions
-player <- team %>% filter(namePlayer == "Kevin Durant") %>%
+player <- team %>% filter(namePlayer == "Stephen Curry") %>%
   mutate(x = as.numeric(as.character(locationX)) / 10,
          y = as.numeric(as.character(locationY)) / 10 + hoop_center_y)
 
@@ -215,62 +215,69 @@ final_player <- player %>% filter(dateGame == 20210615)
 ```
 
 ```{r}
-player |>
-  group_by(nameZone) |>
-  summarise(prop = mean(isShotMade))
-```
+player_mod <-
+  player |>
+  mutate(numberPeriod = as_factor(numberPeriod),
+         nameZone = as_factor(nameZone),
+         isShotMade = as.integer(isShotMade))
 
+mod <-
+  glm(isShotMade ~ distanceShot,
+      data = player_mod,
+      family = "binomial")
+
+grid <-
+  data_grid(player_mod,
+            distanceShot = seq_range(distanceShot, n = 1000)
+  )
+
+aug <-
+  augment(mod,
+          newdata = grid,
+          se_fit = TRUE)
+
+aug <-
+  aug |>
+  mutate(.predprob = (exp(.fitted) / (1 + exp(.fitted))))
+
+aug <-
+  aug |>
+  mutate(min = .predprob - .se.fit,
+         max = .predprob + .se.fit)
+
+made <-
+  player_mod |>
+  filter(isShotMade == 1)
+
+missed <-
+  player_mod |>
+  filter(isShotMade == 0)
+```
 
 ```{r}
-palette <- paletteer::paletteer_d("RColorBrewer::YlOrRd", direction = -1)
-
-p1 <- plot_court(court_themes$ppt) + 
-  geom_density_2d_filled(player, mapping = aes(x=x,y=y,fill = ..level..,), 
-                         contour_var = "ndensity", breaks = seq(0.1, 1.0, length.out = 10), alpha = .5)  + 
-  scale_fill_manual(values = c(palette), aesthetics = c("fill", "color")) +
-  scale_x_continuous(limits = c(-27.5, 27.5)) + 
-  scale_y_continuous(limits = c(0, 45)) +
-  theme(legend.position = "none",
-        plot.title = element_text(hjust = .5, size = 22, family = "Times New Roman", face = "bold", vjust = -4),
-        plot.subtitle = element_text(hjust = .5, size = 10, family = "Times New Roman", face = "bold", vjust = -8),
-        legend.title = element_blank(),
-        legend.text = element_text(hjust = .5, size = 10, family = "Times New Roman", face = "bold", colour = "white"),
-        plot.caption = element_text(hjust = .5, size = 6, family = "Times New Roman", face = "bold", colour = "lightgrey", vjust = 8)) +
-  labs(title = "Chris Paul Shot Heatmap",
-          subtitle = "2020-21 Playoffs | As of 7/13/21") 
-
-ggdraw(p1) + theme(plot.background = element_rect(fill="gray15", color = NA)) 
-p1
+  ggplot(data = aug,
+         aes(x = distanceShot,
+             y = .predprob)) +
+  geom_line(linewidth = 1.2) +
+  geom_ribbon(aes(ymin = min,
+                  ymax = max),
+              fill = "grey70",
+              alpha = 0.4) +
+  geom_rug(data = made,
+           sides = "t",
+           alpha = 0.3,
+           aes(y = isShotMade)) +
+  geom_rug(data = missed,
+           sides = "b",
+           alpha = 0.3,
+           aes(y = isShotMade)) +
+  scale_x_continuous(breaks = seq(0, 70, 20)) +
+  theme_minimal() +
+  labs(x = "Shot Distance",
+       y = "Predicted Probability") +
+  theme(panel.background = element_rect(fill = "ivory"),
+        plot.background = element_rect(fill = "ivory"))
 ```
-
-```{r}
-stats <-
-  bref_players_stats(seasons = 2024,
-                     tables = "per_game")
-stats <-
-  stats |>
-  select(- c("slugSeason",
-            "groupPosition",
-            "yearSeason",
-            "isSeasonCurrent",
-            "slugPlayerSeason",
-            "slugPlayerBREF",
-            "isHOFPlayer",
-            "slugTeamsBREF",
-            "pctFG2",
-            "fg2mPerGame",
-            "fg2aPerGame",
-            "idPlayerNBA",
-            "urlPlayerThumbnail",
-            "urlPlayerHeadshot",
-            "urlPlayerPhoto",
-            "urlPlayerStats",
-            "urlPlayerActionPhoto",
-            "countTeamsPlayerSeasonPerGame",
-            "urlPlayerBREF"
-          ))
-```
-
 
 ```{r}
 library(shiny)
@@ -282,7 +289,6 @@ library(cowplot)
 library(shinyWidgets)
 library(broom)
 library(modelr)
-library(pander)
 library(DT)
 
 # Creating court and plotting
@@ -493,11 +499,19 @@ ui <- fluidPage(
                    "Update")
     ),
     mainPanel(
-      plotOutput("player_plot")
+      tabsetPanel(
+        tabPanel(
+          "Shot Chart and Stats",
+          plotOutput("player_plot"),
+          DT::dataTableOutput("shot_metrics"),
+          DT::dataTableOutput("zone_type"),
+        ),
+        tabPanel("Shot Probability",
+                 plotOutput("log_model")
+        )
+      )
     )
   ),
-  DT::dataTableOutput("shot_metrics"),
-  DT::dataTableOutput("zone_type"),
 )
 
 server <- function(input, output, session) {
@@ -539,6 +553,37 @@ server <- function(input, output, session) {
           x = as.numeric(as.character(locationX)) / 10,
           y = as.numeric(as.character(locationY)) / 10 + hoop_center_y
         )
+    })
+  
+  model_react <-
+    eventReactive(input$button, {
+      team_react() |>
+        filter(namePlayer == input$player) |>
+        mutate(isShotMade == as.integer(isShotMade))
+    })
+  
+  model <-
+    reactive({
+      mod <- glm(isShotMade ~ distanceShot,
+          data = model_react(),
+          family = "binomial")
+      
+      grid <-
+        data_grid(player_mod,
+                  distanceShot = seq_range(distanceShot, n = 1000)
+        )
+      
+      aug <-
+        augment(mod,
+                newdata = grid,
+                se_fit = TRUE)
+      
+      aug <-
+        aug |>
+        mutate(.predprob = (exp(.fitted) / (1 + exp(.fitted)))) |>
+        mutate(min = .predprob - .se.fit,
+               max = .predprob + .se.fit)
+        
     })
   
   output$player_plot <-
@@ -611,7 +656,7 @@ server <- function(input, output, session) {
   
   # model <-
   #   reactive({
-  #     df <- glm(isShotMade ~ distanceShot + numberPeriod, data = player_react(), family = "binomial")
+  #     df <- glm(isShotMade ~ distanceShot, data = player_react(), family = "binomial")
   #     grid <- 
   #       df |>
   #       data_grid(
@@ -625,13 +670,25 @@ server <- function(input, output, session) {
   #       mutate(.predprob = (exp(.fitted) / (1 + exp(.fitted))))
   #   })
   # 
-  # output$log_model <-
-  #   renderPlot({
-  #     ggplot(model(),
-  #            aes(x = distanceShot,
-  #                y = .predprob)) +
-  #       geom_line()
-  #   })
+  output$log_model <-
+    renderPlot({
+      ggplot(model(),
+             aes(x = distanceShot,
+                 y = .predprob)) +
+        geom_line(linewidth = 1.2) +
+        geom_ribbon(ymin = min,
+                    ymax = max,
+                    fill = "grey70",
+                    alpha = 0.3) +
+        scale_x_continuous(breaks = seq(0, 70, 20)) +
+        theme_minimal() +
+        labs(x = "Shot Distance",
+             y = "Predicted Probability") +
+        theme(
+          panel.background = element_rect(fill = "ivory"),
+          plot.background = element_rect(fill = "ivory")
+        )
+    })
   
   zone <-
     eventReactive(input$button, {
