@@ -497,7 +497,7 @@ ui <- fluidPage(
     )
   ),
   DT::dataTableOutput("shot_metrics"),
-  DT::dataTableOutput("shot_type"),
+  DT::dataTableOutput("zone_type"),
 )
 
 server <- function(input, output, session) {
@@ -633,14 +633,13 @@ server <- function(input, output, session) {
   #       geom_line()
   #   })
   
-  clutch <-
+  zone <-
     eventReactive(input$button, {
       player_react() |>
-        group_by(typeAction) |>
+        group_by(zoneRange) |>
         summarise(`Percent of Shots Made` = round(mean(isShotMade), 2),
-                  nS = n()) |>
-        filter(nS >= 10) |>
-        select(-nS) |>
+                  `Number of Shots Attempted` = n()) |>
+        filter(`Number of Shots Attempted` >= 10) |>
         arrange(desc(`Percent of Shots Made`))
     })
   
@@ -714,9 +713,9 @@ server <- function(input, output, session) {
       rownames = FALSE
     )
   
-  output$shot_type <-
+  output$zone_type <-
     DT::renderDataTable(
-      clutch(),
+      zone(),
       options = list(
         scrollX = TRUE,
         searching = FALSE,
