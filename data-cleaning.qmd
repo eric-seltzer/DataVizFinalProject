@@ -1,0 +1,37 @@
+```{r}
+library(tidyverse)
+```
+
+```{r}
+soccer <- read.csv("datafm20.csv")
+```
+
+```{r}
+leagues <- c("Spanish First Division",
+             "Italian Serie A",
+             "English Premier Division",
+             "Ligue 1 Conforama", 
+             "Bundesliga",
+             "Portuguese Premier League",
+             "Eredivisie",
+             "Ukrainian Premier League",
+             "Belgian Pro League A")
+```
+
+```{r}
+soccerTidy <-
+  soccer |>
+  filter(Division %in% leagues)
+  
+
+soccerTidy |>
+  mutate(Division = as_factor(Division)) |>
+  pull(Division) |>
+  levels()
+
+soccer |>
+  mutate(Division = as_factor(Division)) |>
+  pull(Division) |>
+  levels()
+```
+
