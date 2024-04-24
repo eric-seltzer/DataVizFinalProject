@@ -18,7 +18,7 @@ teams <-
 teams <-
   teams |>
   filter(namePlayer == "Stephen Curry") |>
-  mutate(isShotMade = as.integer(isShotMade))
+  mutate(isShotMade = as.numeric(isShotMade))
 ```
 
 ```{r}
@@ -54,7 +54,6 @@ missed <-
 ```
 
 ```{r}
-
 ggplot(aug,
        aes(x = distanceShot,
            y = .predprob)) +
@@ -86,6 +85,7 @@ ggplot(aug,
 ```
 
 ```{r}
+#| warning: false
 library(shiny)
 library(nbastatR)
 library(tidyverse)
@@ -364,8 +364,7 @@ server <- function(input, output, session) {
   model_react <-
     eventReactive(input$button, {
       team_react() |>
-        filter(namePlayer == input$player) |>
-        mutate(isShotMade == as.integer(isShotMade))
+        filter(namePlayer == input$player)
     })
   
   model <-
@@ -465,13 +464,13 @@ server <- function(input, output, session) {
     renderPlot({
       
       made <-
-        model_react() |>
+        player_react() |>
         filter(isShotMade == 1)
       
       missed <-
-        model_react() |>
+        player_react() |>
         filter(isShotMade == 0)
-      
+
       ggplot(model(),
              aes(x = distanceShot,
                  y = .predprob)) +
@@ -479,18 +478,18 @@ server <- function(input, output, session) {
                   colour = "blue") +
         geom_rug(data = made,
                  sides = "t",
-                 alpha = 0.3,
-                 aes(y = isShotMade)) +
+                 alpha = 0.75,
+                 aes(y = as.numeric(isShotMade))) +
         geom_rug(data = missed,
                  sides = "b",
-                 alpha = 0.3,
-                 aes(y = isShotMade)) +
+                 alpha = 0.75,
+                 aes(y = as.numeric(isShotMade))) +
         geom_ribbon(aes(ymin = min,
                         ymax = max),
                     fill = "blue",
-                    alpha = 0.3) +
-        scale_x_continuous(breaks = seq(0, 70, 20)) +
+                    alpha = 0.2) +
         theme_minimal() +
+        scale_x_continuous(breaks = seq(0, 70, 10)) +
         labs(x = "Shot Distance",
              y = "Predicted Probability",
              title = glue::glue(input$player, " Shot Make Probability Model")) +
@@ -508,7 +507,8 @@ server <- function(input, output, session) {
         summarise(`Percent of Shots Made` = round(mean(isShotMade), 2),
                   `Number of Shots Attempted` = n()) |>
         filter(`Number of Shots Attempted` >= 10) |>
-        arrange(desc(`Percent of Shots Made`))
+        arrange(desc(`Percent of Shots Made`)) |>
+        rename("Distance" = zoneRange)
     })
   
   metrics <-
