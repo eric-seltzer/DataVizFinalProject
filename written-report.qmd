@@ -289,6 +289,8 @@ p1 <-
 ggdraw(p1) + theme(plot.background = element_rect(fill = "ivory", color = NA))
 ```
 
+This visualization is important as it shows where a NBA player likes to shoot from and it is also quite easy to see their favorite locations to shoot from. This is a static version I created using Stephen Curry from the 2023-24 season. It was quite hard to get this to work and be updating which is why I implemented an update button. That way, you can select who you want to look at first, and the visualization isn't constantly changing and being distracting.
+
 ## Logistic Regression Model
 
 ```{r}
@@ -351,6 +353,8 @@ ggplot(aug,
     plot.title = element_text(family = "Times New Roman")
   )
 ```
+
+My second visualization was of the predicted probabilities of a shot to go in for a given player, based on how far away they were shooting from. This is also a static version set to Stephen Curry from the 2023-24 season as well. This one also live updates to whichever player you select. This model shows that the chances of a shot going in decrease as a player is further away from the basket. What is most interesting is looking at how quickly the probability decreases. For someone like Stephen Curry, the probability stays higher for much longer than someone like Rudy Gobert. Although this is obvious if you know the playing styles of these two players, it is useful to compare between two more similar players. The only things I might improve on this visualization is making the model include more variables, but for simplification of interpretation, using only distance felt like it made the most sense.
 
 # Conclusion and Future Work
 
