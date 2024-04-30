@@ -1,33 +1,22 @@
 ---
-title: "Written Report"
+title: "Final Project Presentation"
 author: "Eric Seltzer"
-format: html
+format: revealjs
 ---
 
-# Abstract
+## Introduction to Data
 
-In this final project, I set out to create a shiny app that allows you to quickly look at an NBA player's statistics for a given season, see a breakdown of their shooting, and a model that predicts the probability of them making a shot based on the distance they take it from. There is no data set for this project, but it is done using an API package called nbastatR. According to the documentation, this is described as, "An interface for professional basketball data in R. Data sources include, but are not limited to: NBA Stats API, Basketball Insiders, Basketball-Reference, HoopsHype, and RealGM. Overtime additional data sources will be added."
-
-When you use the API package it does create data frames. The one I used for this project is done using the teams_shots() function. Below is an example of what is in the data frame.
-
+API Package called nbastatR. When you use the API package it creates data frames. The one I used for this project is done using the teams_shots() function. Below is an example of what is in the data frame.
 ```{r}
 #| warning: false
-library(shiny)
 library(nbastatR)
 library(tidyverse)
-library(ggplot2)
-library(extrafont)
-library(cowplot)
-library(shinyWidgets)
-library(broom)
-library(modelr)
-library(DT)
 library(knitr)
-```
-
-```{r}
-#| warning: false
-library(nbastatR)
+library(ggplot2)
+library(cowplot)
+library(modelr)
+library(broom)
+Sys.setenv(VROOM_CONNECTION_SIZE=500000)
 teams <-
   nba_teams() |>
   filter(isNonNBATeam == 0) |>
@@ -46,14 +35,10 @@ player <-
 kable(head(player))
 ```
 
-# Introduction
+## Question/Questions
+There was no exact question for this project, but more a problem that I wanted to solve. It is hard to look at what type of statistics you want to see when analyzing a NBA player, for instance they aren't in the same place. I wanted to create something that allowed someone to look at what I consider to be most of the important metrics.
 
-Although there are many websites in which you can look at what my shiny app provides, I wanted to make this process easier. For instance, on Basketball Reference, which to my knowledge is the most common way to look at a player's performance, it is hard to find what you are looking for, and to find earlier seasons. As well, there are certain metrics like shot percentage by distance which aren't available. I decided to combine many of the statistics that are on Basketball Reference, with other valuable visualizations such as the shot chart and model showing shot make probability. Although there is no direct question to the creation of this app, there is reasoning. I wanted to create a quick and easy way for someone to look at a player's performance, their strengths, and where they like to shoot from without having to scour the internet and go to multiple sources.
-
-# Relevant Visualizations
-
-## Shot Chart
-
+## Visualization 1
 ```{r}
 #| warning: false
 circle_points = function(center = c(0, 0),
@@ -299,10 +284,7 @@ p1 <-
 ggdraw(p1) + theme(plot.background = element_rect(fill = "ivory", color = NA))
 ```
 
-This visualization is important as it shows where a NBA player likes to shoot from and it is also quite easy to see their favorite locations to shoot from. This is a static version I created using Stephen Curry from the 2023-24 season. It was quite hard to get this to work and be updating which is why I implemented an update button. That way, you can select who you want to look at first, and the visualization isn't constantly changing and being distracting.
-
-## Logistic Regression Model
-
+## Visualization 2
 ```{r}
 mod <- glm(isShotMade ~ distanceShot,
            data = player,
@@ -364,8 +346,3 @@ ggplot(aug,
   )
 ```
 
-My second visualization was of the predicted probabilities of a shot to go in for a given player, based on how far away they were shooting from. This is also a static version set to Stephen Curry from the 2023-24 season as well. This one also live updates to whichever player you select. This model shows that the chances of a shot going in decrease as a player is further away from the basket. What is most interesting is looking at how quickly the probability decreases. For someone like Stephen Curry, the probability stays higher for much longer than someone like Rudy Gobert. Although this is obvious if you know the playing styles of these two players, it is useful to compare between two more similar players. The only things I might improve on this visualization is making the model include more variables, but for simplification of interpretation, using only distance felt like it made the most sense.
-
-# Conclusion and Future Work
-
-I don't think that there are any true limitations to my visualizations, but some things I could add could be a heat map of where players shoot from. It would get rid of the one limitation of the shot chart which is that when there is a condensed area, it is hard to see a lot of the observations. Some thing else that I could add in the future to really improve this would be a second tab in which you could select a different player. This would allow for easy comparison and would be great for seeing who you would prefer, whether it is for your team, your fantasy team, or even sports betting. I don't think this would be super difficult, the only reason I didn't do it was because I think it would take a lot of power as this API is scraping data from the web and is already slightly slower than I want it to be.

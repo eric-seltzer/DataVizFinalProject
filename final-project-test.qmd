@@ -5,6 +5,7 @@ format: html
 ---
 
 ```{r}
+library(knitr)
 teams <-
   nba_teams() |>
   filter(isNonNBATeam == 0) |>
@@ -19,6 +20,8 @@ teams <-
   teams |>
   filter(namePlayer == "Stephen Curry") |>
   mutate(isShotMade = as.numeric(isShotMade))
+
+kable(teams)
 ```
 
 ```{r}
