@@ -1,2 +1,2 @@
 # DataVizFinalProject
-Final project for Data Visualization Class
+In this project, I wanted to create an app that allows you to access what I consider to be relevant data when determining how good a NBA player is. In this project, you can look at a player by their season and see their shot chart and statistics. As well, there is a model that predicts the probability of a shot going in for that player based on the distance that they shoot from.
