@@ -4,6 +4,9 @@ author: "Eric Seltzer"
 format: html
 ---
 
+[GitHut Repository](https://github.com/eric-seltzer/DataVizFinalProject){target="_blank"}
+[Class Blog](https://eric-seltzer.github.io/DataVizBlog/){target="_blank"}
+
 # Abstract
 
 In this final project, I set out to create a shiny app that allows you to quickly look at an NBA player's statistics for a given season, see a breakdown of their shooting, and a model that predicts the probability of them making a shot based on the distance they take it from. There is no data set for this project, but it is done using an API package called nbastatR. According to the documentation, this is described as, "An interface for professional basketball data in R. Data sources include, but are not limited to: NBA Stats API, Basketball Insiders, Basketball-Reference, HoopsHype, and RealGM. Overtime additional data sources will be added."
